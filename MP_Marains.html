@@ -1,0 +1,987 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MP Marines &amp; Ship Model Registry</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%93%3C/text%3E%3C/svg%3E">
+<meta name="description" content="Handbuilt-grade ship model kits, display hulls, and RC vessels — logged, specced, and shipped like a shipwright's registry.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F2EADA;
+    --card:#FBF7EC;
+    --ink:#1C2B3A;
+    --ink-soft:#4B5C6D;
+    --brass:#8E6A2F;
+    --rust:#8A3E2C;
+    --line:rgba(28,43,58,.28);
+    --line-soft:rgba(28,43,58,.14);
+    --focus:#2E6E8E;
+    --radius:2px;
+    --max:1180px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth; scroll-padding-top:84px}
+  @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} *{animation-duration:.001ms !important; transition-duration:.001ms !important} }
+  body{
+    margin:0; font-family:'IBM Plex Sans',system-ui,sans-serif; color:var(--ink);
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 39px, var(--line-soft) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, var(--line-soft) 40px),
+      var(--paper);
+    background-attachment:fixed; line-height:1.55; font-size:16px;
+  }
+  a{color:var(--brass)}
+  :focus-visible{outline:2px solid var(--focus); outline-offset:2px}
+  h1,h2,h3,h4{font-family:'Fraunces',serif; font-weight:500; margin:0; color:var(--ink)}
+  .mono{font-family:'IBM Plex Mono',monospace}
+  .container{max-width:var(--max); margin:0 auto; padding:0 28px}
+
+  /* ---- top bar ---- */
+  .topbar{border-bottom:2px solid var(--ink); background:var(--paper); position:sticky; top:0; z-index:10}
+  .nav{display:flex; align-items:center; justify-content:space-between; gap:18px; padding-top:18px; padding-bottom:18px; flex-wrap:wrap}
+  .brand{display:flex; align-items:baseline; gap:10px}
+  .brand .mark{font-family:'Fraunces',serif; font-size:1.4rem}
+  .brand .tag{font-family:'IBM Plex Mono',monospace; font-size:.7rem; color:var(--ink-soft); border-left:1px solid var(--line); padding-left:10px}
+  .navlinks{display:flex; gap:2px; flex-wrap:wrap}
+  .navlinks button{
+    font-family:'IBM Plex Mono',monospace; font-size:.8rem;
+    background:none; border:1px solid transparent; color:var(--ink-soft);
+    padding:9px 12px; cursor:pointer; border-radius:var(--radius);
+  }
+  .navlinks button:hover{color:var(--ink); border-color:var(--line)}
+  .navlinks button[data-active="true"]{color:var(--ink); border-color:var(--ink); background:var(--card)}
+
+  .btn{
+    font-family:'IBM Plex Mono',monospace; font-size:.85rem;
+    border:1px solid var(--ink); background:var(--paper); color:var(--ink);
+    padding:11px 18px; border-radius:var(--radius); cursor:pointer;
+  }
+  .btn:hover{background:var(--ink); color:var(--paper)}
+  .btn.primary{background:var(--brass); border-color:var(--brass); color:var(--paper)}
+  .btn.primary:hover{background:var(--ink); border-color:var(--ink)}
+  .btn.ghost{border-color:var(--line); color:var(--ink-soft); background:none}
+  .btn.ghost:hover{border-color:var(--ink); background:none; color:var(--ink)}
+  .btn.block{width:100%}
+  .btn:disabled{opacity:.45; cursor:not-allowed}
+
+  .view{display:none}
+  .view.active{display:block}
+
+  /* ---- shared plate / elevation ---- */
+  .plate{position:relative; border:1px solid var(--ink); background:var(--card); padding:18px}
+  .plate::before,.plate::after{content:""; position:absolute; width:12px; height:12px; border:1px solid var(--ink)}
+  .plate::before{top:-1px; left:-1px; border-right:none; border-bottom:none}
+  .plate::after{bottom:-1px; right:-1px; border-left:none; border-top:none}
+  .plate-label{font-family:'IBM Plex Mono',monospace; font-size:.68rem; color:var(--ink-soft); display:flex; justify-content:space-between; margin-bottom:8px}
+  .ship-elevation .hull{fill:var(--card); stroke:var(--ink); stroke-width:2}
+  .ship-elevation .rig{stroke:var(--ink); stroke-width:1.4; fill:none}
+  .ship-elevation .water{stroke:var(--brass); stroke-width:1.2; stroke-dasharray:4 4}
+  .ship-elevation .dim{stroke:var(--ink-soft); stroke-width:1}
+  .ship-elevation .dimtext{font:11px 'IBM Plex Mono',monospace; fill:var(--ink-soft)}
+
+  /* ---- Hero image ---- */
+  .hero-ship-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    object-fit: contain;
+    object-position: center;
+    border: 1px solid var(--line);
+  }
+
+  /* ---- HOME / marketing ---- */
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
+    gap: 40px;
+    align-items: center;
+    padding-top: 56px;
+    padding-bottom: 48px;
+  }
+  .kicker{font-family:'IBM Plex Mono',monospace; font-size:.78rem; color:var(--brass)}
+  .hero h1{font-size:clamp(2.3rem,4.4vw,3.7rem); line-height:1.05; margin:16px 0 20px; max-width:15ch}
+  .hero p{max-width:50ch; color:var(--ink-soft); font-size:1.03rem}
+  .hero-actions{display:flex; gap:14px; margin-top:26px; flex-wrap:wrap}
+
+  .strip{border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:20px 0; margin-top:10px}
+  .strip .container{display:flex; justify-content:space-between; flex-wrap:wrap; gap:16px; font-family:'IBM Plex Mono',monospace; font-size:.76rem; color:var(--ink-soft)}
+
+  .mkt-section{padding-top:56px; padding-bottom:56px}
+  .section-head{max-width:60ch; margin-bottom:34px}
+  .section-head .kicker{display:block; margin-bottom:10px}
+  .section-head h2{font-size:1.8rem; margin-bottom:10px}
+  .section-head p{color:var(--ink-soft)}
+
+  .classes{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:18px}
+  .class-card{border:1px solid var(--line); background:var(--card); padding:20px; cursor:pointer; transition:border-color .15s}
+  .class-card:hover{border-color:var(--ink)}
+  .class-card svg{width:46px; height:46px; color:var(--brass); margin-bottom:12px}
+  .class-card h3{font-size:1.05rem; margin-bottom:6px}
+  .class-card p{color:var(--ink-soft); font-size:.9rem; margin:0}
+
+  .process{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); border:1px solid var(--line)}
+  .step{padding:24px; border-right:1px solid var(--line)}
+  .step:last-child{border-right:none}
+  .step .num{font-family:'IBM Plex Mono',monospace; font-size:.76rem; color:var(--brass); display:block; margin-bottom:8px}
+  .step h3{font-size:1rem; margin-bottom:6px}
+  .step p{color:var(--ink-soft); font-size:.88rem; margin:0}
+
+  .quote-block{border-left:3px solid var(--brass); padding-left:24px; max-width:70ch}
+  .quote-block p{font-family:'Fraunces',serif; font-size:1.3rem; line-height:1.4; color:var(--ink); margin:0 0 12px}
+  .quote-block cite{font-family:'IBM Plex Mono',monospace; font-size:.76rem; color:var(--ink-soft); font-style:normal}
+
+  .cta{border:1px solid var(--ink); background:var(--card); padding:36px; display:grid; grid-template-columns:1.2fr .8fr; gap:26px; align-items:center}
+  .cta h2{font-size:1.5rem; margin-bottom:8px}
+  .cta p{color:var(--ink-soft); max-width:46ch}
+  form.subscribe{display:flex; gap:10px; flex-wrap:wrap}
+  form.subscribe input{flex:1; min-width:170px}
+  .form-note{font-family:'IBM Plex Mono',monospace; font-size:.72rem; color:var(--ink-soft); margin-top:10px; min-height:1.2em}
+
+  /* ---- catalog / shop ---- */
+  .section{padding-top:34px; padding-bottom:6px}
+  .section-flat{display:flex; align-items:baseline; justify-content:space-between; gap:16px; border-bottom:1px solid var(--ink); padding-bottom:12px; margin-bottom:20px; flex-wrap:wrap}
+  .section-flat h2{font-size:1.5rem}
+  .section-flat .count{font-family:'IBM Plex Mono',monospace; font-size:.78rem; color:var(--ink-soft)}
+  .subtle{color:var(--ink-soft); max-width:64ch; margin:0 0 20px}
+
+  .toolbar{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:22px}
+  input,select,textarea{
+    font-family:'IBM Plex Sans',sans-serif; font-size:.92rem; color:var(--ink);
+    border:1px solid var(--line); background:var(--card); padding:11px 13px; border-radius:var(--radius);
+  }
+  .toolbar input{flex:2; min-width:200px}
+  .toolbar select{flex:1; min-width:150px; font-family:'IBM Plex Mono',monospace; font-size:.82rem}
+
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:18px}
+  .card{border:1px solid var(--line); background:var(--card); display:flex; flex-direction:column}
+  .product-card{cursor:pointer; transition:border-color .15s}
+  .product-card:hover{border-color:var(--ink)}
+  .product-card .art{height:150px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:center; color:var(--ink-soft);
+    background:repeating-linear-gradient(45deg, transparent, transparent 8px, var(--line-soft) 8px, var(--line-soft) 9px)}
+  .product-card .art svg{width:70%; height:70%}
+  .product-card .art img{width:100%; height:100%; object-fit:cover}
+  .product-card .body{padding:16px; display:grid; gap:8px}
+  .tag-row{display:flex; gap:8px; flex-wrap:wrap}
+  .pill{font-family:'IBM Plex Mono',monospace; font-size:.68rem; border:1px solid var(--line); padding:3px 8px; color:var(--ink-soft); border-radius:99px}
+  .pill.stock-low{border-color:var(--rust); color:var(--rust)}
+  .product-card h3{font-size:1.06rem}
+  .price-row{display:flex; justify-content:space-between; align-items:center; margin-top:4px}
+  .price{font-family:'Fraunces',serif; font-size:1.18rem}
+  .card-actions{display:flex; gap:8px}
+  .card-actions .btn{padding:8px 12px; font-size:.76rem}
+
+  .layout-2{display:grid; grid-template-columns:1.15fr .85fr; gap:24px; align-items:start}
+  .spec-table{width:100%; border-collapse:collapse; margin-top:10px}
+  .spec-table tr{border-bottom:1px solid var(--line-soft)}
+  .spec-table td{padding:9px 0; font-size:.88rem}
+  .spec-table td:first-child{color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; font-size:.76rem; width:38%}
+
+  .list{display:grid; gap:12px}
+  .item{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:14px; padding:14px; border:1px solid var(--line); background:var(--card)}
+  .item h4{font-size:1rem; margin-bottom:4px}
+  .item small{color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; font-size:.76rem}
+
+  .qty{display:flex; align-items:center; gap:8px}
+  .qty button{padding:4px 11px}
+  .qty span{min-width:2ch; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:.9rem}
+  .totals{margin-top:6px}
+  .totals .line{display:flex; justify-content:space-between; padding:6px 0; font-size:.92rem}
+  .totals .line.total{border-top:1px solid var(--ink); margin-top:6px; padding-top:12px; font-family:'Fraunces',serif; font-size:1.15rem}
+  .divider{height:1px; background:var(--line); margin:16px 0}
+
+  .field{display:grid; gap:6px; margin-bottom:14px}
+  .field label{font-family:'IBM Plex Mono',monospace; font-size:.74rem; color:var(--ink-soft)}
+  .field input,.field select,.field textarea{width:100%}
+  .auth-wrap{display:grid; grid-template-columns:1fr 1fr; gap:20px}
+  .panel{padding:24px}
+  /* full-width panels (checkout/account) keep the same side gutter as the rest of the page */
+  .container.panel{width:calc(100% - 56px); max-width:calc(var(--max) - 56px)}
+  .msg{font-family:'IBM Plex Mono',monospace; font-size:.82rem; color:var(--brass); margin-top:10px; min-height:1.2em}
+
+  .admin-table{width:100%; border-collapse:collapse; font-size:.88rem}
+  .admin-table th{text-align:left; font-family:'IBM Plex Mono',monospace; font-size:.7rem; color:var(--ink-soft); border-bottom:1px solid var(--ink); padding:8px 6px}
+  .admin-table td{padding:9px 6px; border-bottom:1px solid var(--line-soft)}
+  .admin-table button{background:none; border:none; color:var(--rust); font-family:'IBM Plex Mono',monospace; font-size:.76rem; cursor:pointer; padding:0}
+
+  .empty{border:1px dashed var(--line); padding:26px; text-align:center; color:var(--ink-soft)}
+
+  footer.container{border-top:2px solid var(--ink); padding-top:30px; padding-bottom:40px; margin-top:20px}
+  .foot-grid{display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:24px}
+  footer h4{font-family:'IBM Plex Mono',monospace; font-size:.72rem; color:var(--ink-soft); margin-bottom:10px}
+  footer ul{list-style:none; padding:0; margin:0; display:grid; gap:8px}
+  footer ul a{font-size:.86rem; color:var(--ink)}
+  .foot-bottom{margin-top:26px; padding-top:16px; border-top:1px solid var(--line); font-family:'IBM Plex Mono',monospace; font-size:.72rem; color:var(--ink-soft); display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px}
+
+  @media (max-width: 900px) {
+    .hero,
+    .layout-2,
+    .auth-wrap,
+    .cta,
+    .foot-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .hero {
+      gap: 28px;
+      padding-top: 36px;
+    }
+
+    .process {
+      grid-template-columns: 1fr;
+    }
+
+    .step {
+      border-right: none;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .step:last-child {
+      border-bottom: none;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="container nav">
+    <div class="brand">
+      <span class="mark">MP &amp; Productions</span>
+      <span class="tag">MP Marines
+      </span>
+    </div>
+    <nav class="navlinks" id="navlinks" aria-label="Primary">
+      <button data-view="home" onclick="showView('home')">HOME</button>
+      <button data-view="shop" onclick="showView('shop')">CATALOG</button>
+      <button data-view="cart" onclick="showView('cart')">CART (<span id="cartCount">0</span>)</button>
+      <button data-view="auth" onclick="showView('auth')">SIGN IN</button>
+      <button data-view="account" onclick="showView('account')">ACCOUNT</button>
+      <button data-view="admin" onclick="showView('admin')">REGISTRAR</button>
+    </nav>
+  </div>
+</div>
+
+<div id="dataWarn" hidden style="background:var(--rust); color:var(--paper); font-family:'IBM Plex Mono',monospace; font-size:.8rem; padding:10px 28px; text-align:center;">
+  Catalog data not found — put <b>products.js</b> in the same folder as this page, then refresh.
+</div>
+
+<main class="container" style="padding-left:0; padding-right:0;">
+
+  <!-- ============ HOME (marketing) ============ -->
+  <section id="home" class="view active">
+    <div class="container hero">
+      <div>
+        <span class="kicker">HANDBUILT-GRADE SHIP MODELS</span>
+
+        <h1>Ships worth building slowly.</h1>
+
+        <p>
+          Wooden kits, resin display hulls, RC vessels, and die-cast collectibles
+          — every entry logged with scale, material, and part count, the way a
+          shipwright would log a build. No shortcuts, no unlabeled parts bags.
+        </p>
+
+        <div class="hero-actions">
+          <button class="btn primary" onclick="showView('shop')">
+            Browse the catalog
+          </button>
+
+          <button
+            class="btn ghost"
+            onclick="document.getElementById('classes').scrollIntoView()">
+            See what we carry
+          </button>
+        </div>
+      </div>
+
+      <div class="plate">
+        <div class="plate-label">
+          <span>FEATURED BUILD</span>
+          <span>SHEET 01</span>
+        </div>
+
+        <img
+          class="hero-ship-image"
+          src="model.jpg"
+          onerror="this.onerror=null; this.src='model.png'"
+          width="1429" height="1003"
+          fetchpriority="high"
+          alt="Handbuilt three-masted sailing ship model in a glass display case"
+        />
+      </div>
+    </div>
+
+    <div class="strip">
+      <div class="container">
+        <span id="statShipped">5,400+ HULLS SHIPPED</span>
+        <span>SCALE RANGE 1:36–1:700</span>
+        <span>FLAT-RATE INSURED SHIPPING</span>
+        <span>30-DAY RETURNS ON UNOPENED KITS</span>
+      </div>
+    </div>
+
+    <div class="container mkt-section" id="classes">
+      <div class="section-head">
+        <span class="kicker">WHAT WE CARRY</span>
+        <h2>Five build classes, one registry.</h2>
+        <p>
+          Whichever way you like to build — plank by plank or straight out of
+          the box — there's an entry logged for it.
+        </p>
+      </div>
+      <div class="classes" id="classGrid"></div>
+    </div>
+
+    <div class="container mkt-section" id="process">
+      <div class="section-head">
+        <span class="kicker">HOW ORDERS ARE LOGGED</span>
+        <h2>From catalog entry to your workbench.</h2>
+      </div>
+      <div class="process">
+        <div class="step"><span class="num">01</span><h3>Pick a hull</h3><p>Filter by class, scale, or skill level, and open the full build sheet before you buy.</p></div>
+        <div class="step"><span class="num">02</span><h3>We inspect and pack</h3><p>Every kit is checked for part count and rigging completeness before it ships.</p></div>
+        <div class="step"><span class="num">03</span><h3>Insured shipping</h3><p>Flat-rate, tracked, and insured — hull damage in transit is replaced, not argued over.</p></div>
+        <div class="step"><span class="num">04</span><h3>Support while you build</h3><p>Stuck on rigging? Our registrars answer build questions, not just order status.</p></div>
+      </div>
+    </div>
+
+    <div class="container mkt-section" id="reviews">
+      <div class="section-head">
+        <span class="kicker">FROM THE WORKBENCH</span>
+        <h2>Builders on their last hull.</h2>
+      </div>
+      <div class="quote-block">
+        <p>The parts manifest matched the box exactly — first kit I've built where I didn't come up two blocks short at the rigging stage.</p>
+        <cite>— R. Iyer, HMS Victory, 1:98</cite>
+      </div>
+    </div>
+
+    <div class="container mkt-section" style="padding-top:0;">
+      <div class="cta">
+        <div>
+          <h2>New entries land monthly.</h2>
+          <p>One email when a new hull, scale, or limited run is logged to the registry. No build spam, no daily deals.</p>
+        </div>
+        <div>
+          <form class="subscribe" id="subscribe" onsubmit="return handleSubscribe(event)">
+            <input type="email" id="subEmail" placeholder="you@example.com" required aria-label="Email address">
+            <button class="btn primary" type="submit">Subscribe</button>
+          </form>
+          <p class="form-note" id="subMsg"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SHOP ============ -->
+  <section id="shop" class="view">
+    <div class="container section">
+      <div class="section-flat">
+        <h2>Catalog</h2>
+        <span class="count" id="resultCount"></span>
+      </div>
+      <p class="subtle">Filter by class or search a hull by name, brand or era. Every card carries the specs you need before opening the full build sheet.</p>
+      <div class="toolbar">
+        <input id="searchInput" placeholder="Search by name, brand, era…" oninput="renderProducts()" aria-label="Search catalog">
+        <select id="categoryFilter" onchange="renderProducts()" aria-label="Filter by class">
+          <option value="">All classes</option>
+          <option>Wooden Kits</option><option>Display Models</option><option>RC Ships</option><option>Die-Cast</option><option>Accessories</option>
+        </select>
+        <select id="sortFilter" onchange="renderProducts()" aria-label="Sort catalog">
+          <option value="featured">Sort: Featured</option>
+          <option value="priceLow">Price: Low to High</option>
+          <option value="priceHigh">Price: High to Low</option>
+        </select>
+      </div>
+      <div id="productGrid" class="grid"></div>
+    </div>
+  </section>
+
+  <!-- ============ CART ============ -->
+  <section id="cart" class="view">
+    <div class="container layout-2 section">
+      <div class="card panel">
+        <div class="section-flat" style="border-bottom:none; padding-bottom:0; margin-bottom:14px;"><h2>Cart</h2></div>
+        <div id="cartList" class="list"></div>
+      </div>
+      <div class="card panel">
+        <h3>Order summary</h3>
+        <div class="totals">
+          <div class="line"><span>Subtotal</span><span id="subTotal">$0.00</span></div>
+          <div class="line"><span>Shipping</span><span id="shippingTotal">$0.00</span></div>
+          <div class="line"><span>Tax</span><span id="taxTotal">$0.00</span></div>
+          <div class="line total"><span>Total</span><span id="grandTotal">$0.00</span></div>
+        </div>
+        <div class="divider"></div>
+        <button class="btn primary block" id="checkoutBtn" onclick="showView('checkout')">Proceed to checkout</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CHECKOUT ============ -->
+  <section id="checkout" class="view">
+    <div class="container card panel">
+      <div class="section-flat" style="border-bottom:none; padding-bottom:0; margin-bottom:18px;"><h2>Checkout</h2></div>
+      <div class="auth-wrap">
+        <div>
+          <h3 style="font-size:1.02rem; margin-bottom:14px;">Shipping address</h3>
+          <div class="field"><label for="shipName">NAME</label><input id="shipName"></div>
+          <div class="field"><label for="shipLine1">ADDRESS</label><input id="shipLine1"></div>
+          <div class="field"><label for="shipCity">CITY</label><input id="shipCity"></div>
+          <div class="field"><label for="shipState">STATE / REGION</label><input id="shipState"></div>
+          <div class="field"><label for="shipPostal">POSTAL CODE</label><input id="shipPostal"></div>
+          <div class="field"><label for="shipCountry">COUNTRY</label><input id="shipCountry" value="India"></div>
+        </div>
+        <div>
+          <h3 style="font-size:1.02rem; margin-bottom:14px;">Payment</h3>
+          <div class="field"><label for="cardNumber">CARD NUMBER</label><input id="cardNumber" placeholder="4242 4242 4242 4242"></div>
+          <div class="field"><label for="cardExpiry">EXPIRY</label><input id="cardExpiry" placeholder="MM/YY"></div>
+          <div class="field"><label for="cardCvc">CVC</label><input id="cardCvc" placeholder="123"></div>
+          <button class="btn primary block" onclick="placeOrder()">Place order</button>
+          <p class="msg" id="checkoutMsg"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ AUTH ============ -->
+  <section id="auth" class="view">
+    <div class="container auth-wrap">
+      <div class="card panel">
+        <h2 style="font-size:1.25rem; margin-bottom:16px;">Create account</h2>
+        <div class="field"><label for="suName">NAME</label><input id="suName"></div>
+        <div class="field"><label for="suEmail">EMAIL</label><input id="suEmail" type="email"></div>
+        <div class="field"><label for="suPass">PASSWORD</label><input id="suPass" type="password"></div>
+        <button class="btn primary block" onclick="signup()">Sign up</button>
+        <p class="msg" id="signupMsg"></p>
+      </div>
+      <div class="card panel">
+        <h2 style="font-size:1.25rem; margin-bottom:16px;">Sign in</h2>
+        <div class="field"><label for="liEmail">EMAIL</label><input id="liEmail" type="email"></div>
+        <div class="field"><label for="liPass">PASSWORD</label><input id="liPass" type="password"></div>
+        <button class="btn primary block" onclick="login()">Sign in</button>
+        <p class="msg" id="loginMsg"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ACCOUNT ============ -->
+  <section id="account" class="view">
+    <div class="container card panel">
+      <div class="section-flat" style="border-bottom:none; padding-bottom:0; margin-bottom:14px;"><h2>Account</h2></div>
+      <p class="subtle" id="accountInfo">Not signed in.</p>
+      <button class="btn ghost" id="signOutBtn" onclick="signOut()" hidden>Sign out</button>
+      <div class="divider"></div>
+      <h3 style="font-size:1.02rem; margin-bottom:12px;">Order history</h3>
+      <div id="ordersList" class="list"></div>
+    </div>
+  </section>
+
+  <!-- ============ ADMIN ============ -->
+  <section id="admin" class="view">
+    <div class="container layout-2">
+      <div class="card panel">
+        <h2 style="font-size:1.25rem; margin-bottom:16px;">Log a new entry</h2>
+        <div class="field"><label for="adName">NAME</label><input id="adName"></div>
+        <div class="field"><label for="adBrand">BRAND</label><input id="adBrand"></div>
+        <div class="field"><label for="adCategory">CLASS</label>
+          <select id="adCategory">
+            <option>Wooden Kits</option><option>Display Models</option><option>RC Ships</option><option>Die-Cast</option><option>Accessories</option>
+          </select>
+        </div>
+        <div class="field"><label for="adScale">SCALE</label><input id="adScale" placeholder="1:98"></div>
+        <div class="field"><label for="adMaterial">MATERIAL</label><input id="adMaterial" placeholder="Wood + Brass"></div>
+        <div class="field"><label for="adDifficulty">SKILL LEVEL</label>
+          <select id="adDifficulty"><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select>
+        </div>
+        <div class="field"><label for="adDimensions">DIMENSIONS</label><input id="adDimensions" placeholder="47 in × 16 in × 36 in"></div>
+        <div class="field"><label for="adParts">PARTS</label><input id="adParts" placeholder="Approx. 9000"></div>
+        <div class="field"><label for="adSku">CATALOG NO.</label><input id="adSku"></div>
+        <div class="field"><label for="adPrice">PRICE (USD)</label><input id="adPrice" type="number" min="0" step="0.01"></div>
+        <div class="field"><label for="adStock">STOCK</label><input id="adStock" type="number" min="0"></div>
+        <div class="field"><label for="adDesc">DESCRIPTION</label><textarea id="adDesc" rows="4"></textarea></div>
+        <div class="field"><label for="adImages">IMAGES (optional)</label>
+          <textarea id="adImages" rows="3" placeholder="images/front.jpg&#10;images/side.jpg&#10;images/rear.jpg"></textarea>
+          <small style="font-family:'IBM Plex Mono',monospace; font-size:.68rem; color:var(--ink-soft);">One path per line. The first is the main photo; every extra line adds another view.</small>
+        </div>
+        <button class="btn primary block" onclick="addAdminProduct()">Save entry</button>
+        <p class="msg" id="adminMsg"></p>
+      </div>
+      <div class="card panel">
+        <h3 style="font-size:1.02rem; margin-bottom:14px;">Registered entries</h3>
+        <table class="admin-table">
+          <thead><tr><th>Name</th><th>Class</th><th>Price</th><th>Stock</th><th></th></tr></thead>
+          <tbody id="adminTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="container">
+  <div class="foot-grid">
+    <div>
+      <div class="brand" style="margin-bottom:10px;"><span class="mark">MP &amp; Productions</span></div>
+      <p style="color:var(--ink-soft); max-width:36ch; font-size:.9rem;">A working registry for ship model builders — wooden kits, display hulls, RC vessels, and die-cast collectibles.</p>
+    </div>
+    <div>
+      <h4>SHOP</h4>
+      <ul>
+        <li><a href="#" onclick="showView('shop'); return false;">Full catalog</a></li>
+        <li><a href="#classes" onclick="showView('home'); document.getElementById('classes').scrollIntoView(); return false;">Build classes</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>SUPPORT</h4>
+      <ul>
+        <li><a href="#process" onclick="showView('home'); document.getElementById('process').scrollIntoView(); return false;">Shipping &amp; returns</a></li>
+        <li><a href="#reviews" onclick="showView('home'); document.getElementById('reviews').scrollIntoView(); return false;">Builder reviews</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot-bottom">
+    <span>MP &amp; Productions — SHIP MODEL REGISTRY</span>
+    <span>DEMO STOREFRONT · NOT A LIVE PAYMENT SYSTEM</span>
+  </div>
+</footer>
+
+<!-- Shared products data -->
+<script src="products.js"></script>
+<script>
+  // if products.js is missing, keep the page alive and say so instead of crashing
+  if (typeof products === 'undefined') { window.products = []; window.__productsMissing = true; }
+</script>
+<script>
+  const classCopy = [
+    { category:'Wooden Kits', icon:'sail', blurb:'Plank-on-frame builds with laser-cut wood and full rigging, for builders who want the long project.' },
+    { category:'Display Models', icon:'liner', blurb:'Pre-cast resin hulls with painted detail. Glue-and-paint assembly, museum-shelf results.' },
+    { category:'RC Ships', icon:'patrol', blurb:'Pond-ready hulls with sealed electronics bays, twin-prop drive, and included controllers.' },
+    { category:'Die-Cast', icon:'cargo', blurb:'Pre-assembled collectibles with weighted keels for a true waterline sit. No build required.' },
+    { category:'Accessories', icon:'tools', blurb:'Rigging thread, blocks, deadeyes, and brass fittings sized for 1:75–1:100 kits.' }
+  ];
+
+  const state = {
+    cart: safeLoad('fk_cart', []),
+    user: safeLoad('fk_user', null),
+    orders: safeLoad('fk_orders', [])
+  };
+
+  function safeLoad(key, fallback){
+    try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+    catch(e){ return fallback; }
+  }
+  function saveCustom(){
+    try{ localStorage.setItem('fk_custom', JSON.stringify(products.filter(p => p.custom))); }catch(e){}
+  }
+  function saveState(){
+    try{
+      localStorage.setItem('fk_cart', JSON.stringify(state.cart));
+      localStorage.setItem('fk_user', JSON.stringify(state.user));
+      localStorage.setItem('fk_orders', JSON.stringify(state.orders));
+    }catch(e){}
+    updateCartCount();
+    updateAuthNav();
+  }
+  function updateAuthNav(){
+    const b = document.querySelector('#navlinks [data-view="auth"]');
+    if(b) b.hidden = !!state.user;          // hide SIGN IN once signed in
+  }
+  const SHIPPING_FLAT = 10, TAX_RATE = 0.05;
+  function orderTotals(){
+    const sub = state.cart.reduce((a,b) => a + b.price * b.qty, 0);
+    const ship = state.cart.length ? SHIPPING_FLAT : 0;
+    const tax = +(sub * TAX_RATE).toFixed(2);
+    return { sub, ship, tax, total: +(sub + ship + tax).toFixed(2) };
+  }
+  function money(n){ return '$' + Number(n).toFixed(2); }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  /* ---------- line-art icons ---------- */
+  function shipIcon(kind){
+    const icons = {
+      sail: `<svg viewBox="0 0 100 70"><path d="M10,52 C25,60 75,60 90,52 L82,44 L18,44 Z" fill="none" stroke="currentColor" stroke-width="2"/><line x1="30" y1="44" x2="30" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="55" y1="44" x2="55" y2="6" stroke="currentColor" stroke-width="1.5"/><line x1="75" y1="44" x2="75" y2="16" stroke="currentColor" stroke-width="1.5"/><line x1="22" y1="20" x2="38" y2="20" stroke="currentColor"/><line x1="45" y1="14" x2="65" y2="14" stroke="currentColor"/><line x1="66" y1="22" x2="84" y2="22" stroke="currentColor"/></svg>`,
+      liner: `<svg viewBox="0 0 100 70"><path d="M8,50 C25,58 75,58 92,50 L86,42 L14,42 Z" fill="none" stroke="currentColor" stroke-width="2"/><rect x="30" y="26" width="40" height="16" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="42" y1="26" x2="42" y2="10" stroke="currentColor" stroke-width="1.5"/><line x1="58" y1="26" x2="58" y2="10" stroke="currentColor" stroke-width="1.5"/></svg>`,
+      patrol: `<svg viewBox="0 0 100 70"><path d="M12,48 C28,55 72,55 88,48 L80,40 L20,40 Z" fill="none" stroke="currentColor" stroke-width="2"/><rect x="40" y="22" width="20" height="18" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="50" y1="22" x2="50" y2="10" stroke="currentColor" stroke-width="1.5"/></svg>`,
+      cargo: `<svg viewBox="0 0 100 70"><path d="M10,50 C26,57 74,57 90,50 L82,42 L18,42 Z" fill="none" stroke="currentColor" stroke-width="2"/><rect x="24" y="26" width="12" height="14" fill="none" stroke="currentColor"/><rect x="38" y="26" width="12" height="14" fill="none" stroke="currentColor"/><rect x="52" y="26" width="12" height="14" fill="none" stroke="currentColor"/><rect x="66" y="26" width="10" height="14" fill="none" stroke="currentColor"/></svg>`,
+      tools: `<svg viewBox="0 0 100 70"><circle cx="35" cy="35" r="14" fill="none" stroke="currentColor" stroke-width="2"/><line x1="46" y1="46" x2="70" y2="60" stroke="currentColor" stroke-width="3"/><line x1="70" y1="18" x2="70" y2="42" stroke="currentColor" stroke-width="2"/><line x1="60" y1="24" x2="80" y2="24" stroke="currentColor" stroke-width="2"/></svg>`
+    };
+    return icons[kind] || icons.sail;
+  }
+
+  // Every image of a product, main photo first (the "+1") then the extras (the "n").
+  // Extras may be plain paths or { src, label }. Duplicates are dropped.
+  function productImages(p){
+    const out = [], seen = new Set();
+    const add = (v, label) => {
+      const it = typeof v === 'string' ? { src: v } : v;
+      if(!it || !it.src || seen.has(it.src)) return;
+      seen.add(it.src);
+      out.push({ src: it.src, label: it.label || label });
+    };
+    add(p.image, 'Main view');
+    (p.gallery || []).forEach(v => add(v, 'View ' + (out.length + 1)));
+    return out;
+  }
+
+  function productArt(p){
+    const first = productImages(p)[0];
+    const src = first && first.src;
+    if(!src) return shipIcon(p.icon);
+    return `<img src="${escapeHtml(src)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.outerHTML = shipIcon('${escapeHtml(p.icon)}')">`;
+  }
+
+  function renderClassGrid(){
+    document.getElementById('classGrid').innerHTML = classCopy.map(c => `
+      <div class="class-card" onclick="goToClass('${escapeHtml(c.category)}')" role="button" tabindex="0" onkeypress="if(event.key==='Enter')goToClass('${escapeHtml(c.category)}')">
+        <div style="color:var(--brass);">${shipIcon(c.icon)}</div>
+        <h3>${escapeHtml(c.category)}</h3>
+        <p>${escapeHtml(c.blurb)}</p>
+      </div>
+    `).join('');
+  }
+  function goToClass(category){
+    showView('shop');
+    document.getElementById('categoryFilter').value = category;
+    renderProducts();
+  }
+
+  /* ---------- view routing ---------- */
+  function showView(id){
+    if(!document.getElementById(id)?.classList.contains('view')) id = 'home';
+    try{ history.replaceState(null, '', id === 'home' ? location.pathname + location.search : '#' + id); }catch(e){}
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('#navlinks button').forEach(b => b.dataset.active = (b.dataset.view === id));
+    if(id === 'shop') renderProducts();
+    if(id === 'cart') renderCart();
+    if(id === 'account') renderAccount();
+    if(id === 'admin') renderAdmin();
+    if(id === 'checkout'){
+      document.getElementById('checkoutMsg').textContent = '';
+      const n = document.getElementById('shipName');
+      if(state.user && !n.value) n.value = state.user.name;
+    }
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  /* ---------- catalog ---------- */
+  function renderProducts(){
+    const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
+    const cat = document.getElementById('categoryFilter')?.value || '';
+    const sort = document.getElementById('sortFilter')?.value || 'featured';
+    let list = products.filter(p =>
+      (!q || p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q) || p.era.toLowerCase().includes(q)) &&
+      (!cat || p.category === cat)
+    );
+    if(sort === 'priceLow') list.sort((a,b) => a.price - b.price);
+    if(sort === 'priceHigh') list.sort((a,b) => b.price - a.price);
+
+    document.getElementById('resultCount').textContent = `${list.length} of ${products.length} entries`;
+
+    const grid = document.getElementById('productGrid');
+    if(!list.length){
+      grid.innerHTML = `<div class="empty">No entries match that search. Try clearing the class filter.</div>`;
+      return;
+    }
+    grid.innerHTML = list.map(p => `
+      <div class="card product-card">
+        <a href="product.html?id=${p.id}" style="text-decoration:none; color:inherit; display:block; height:100%;">
+          <div class="art">${productArt(p)}</div>
+          <div class="body">
+            <div class="tag-row">
+              <span class="pill">${escapeHtml(p.category)}</span>
+              ${p.stock <= 5 ? `<span class="pill stock-low">${p.stock > 0 ? 'Only ' + p.stock + ' left' : 'Sold out'}</span>` : ''}
+            </div>
+            <h3>${escapeHtml(p.name)}</h3>
+            <div class="mono" style="font-size:.78rem; color:var(--ink-soft);">${escapeHtml(p.brand)} · ${escapeHtml(p.scale)}</div>
+            <div class="price-row">
+              <span class="price">${money(p.price)}</span>
+              <div class="card-actions">
+                <button class="btn ghost" onclick="event.stopPropagation(); event.preventDefault(); addToCart(${p.id}, this); return false;" ${p.stock <= 0 ? 'disabled' : ''}>${p.stock <= 0 ? 'Sold out' : 'Add'}</button>
+              </div>
+            </div>
+          </div>
+        </a>
+      </div>
+    `).join('');
+  }
+
+  /* ---------- cart ---------- */
+  function updateCartCount(){
+    document.getElementById('cartCount').textContent = state.cart.reduce((a,b) => a + b.qty, 0);
+  }
+
+  function addToCart(id, btn){
+    const p = products.find(x => x.id === id);
+    if(!p || p.stock <= 0) return;
+    const existing = state.cart.find(i => i.id === id);
+    let label = 'Added ✓';
+    if(existing && existing.qty >= p.stock) label = 'Max in stock';      // never sell more than we have
+    else if(existing) existing.qty += 1;
+    else state.cart.push({ id: p.id, name: p.name, price: p.price, qty: 1 });
+    if(btn){ btn.textContent = label; setTimeout(() => btn.textContent = 'Add', 1200); }
+    saveState();
+  }
+
+  function renderCart(){
+    const list = document.getElementById('cartList');
+    if(!state.cart.length){
+      list.innerHTML = `<div class="empty">Your cart is empty. <a href="#" onclick="showView('shop'); return false;">Browse the catalog.</a></div>`;
+    } else {
+      list.innerHTML = state.cart.map(item => {
+        const p = products.find(x => x.id === item.id);
+        const max = p ? p.stock : item.qty;
+        const name = escapeHtml(item.name);
+        return `
+        <div class="item">
+          <div>
+            <h4><a href="product.html?id=${item.id}" style="color:inherit; text-decoration:none;">${name}</a></h4>
+            <small>${money(item.price)} each${item.qty >= max ? ' · max in stock' : ''}</small>
+          </div>
+          <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+            <div class="qty">
+              <button class="btn ghost" aria-label="Decrease quantity of ${name}" onclick="changeQty(${item.id}, -1)">−</button>
+              <span aria-live="polite">${item.qty}</span>
+              <button class="btn ghost" aria-label="Increase quantity of ${name}" onclick="changeQty(${item.id}, 1)" ${item.qty >= max ? 'disabled' : ''}>+</button>
+            </div>
+            <strong>${money(item.price * item.qty)}</strong>
+            <button class="btn ghost" onclick="removeFromCart(${item.id})">Remove</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    const t = orderTotals();
+    document.getElementById('subTotal').textContent = money(t.sub);
+    document.getElementById('shippingTotal').textContent = money(t.ship);
+    document.getElementById('taxTotal').textContent = money(t.tax);
+    document.getElementById('grandTotal').textContent = money(t.total);
+    document.getElementById('checkoutBtn').disabled = !state.cart.length;
+  }
+
+  function changeQty(id, delta){
+    const item = state.cart.find(i => i.id === id);
+    if(!item) return;
+    const p = products.find(x => x.id === id);
+    const next = item.qty + delta;
+    if(next <= 0){ removeFromCart(id); return; }
+    if(p && next > p.stock) return;
+    item.qty = next;
+    saveState();
+    renderCart();
+  }
+
+  function removeFromCart(id){
+    state.cart = state.cart.filter(i => i.id !== id);
+    saveState();
+    renderCart();
+  }
+
+  /* ---------- auth ---------- */
+  function signup(){
+    const name = document.getElementById('suName').value.trim();
+    const email = document.getElementById('suEmail').value.trim();
+    const pass = document.getElementById('suPass').value;
+    const msg = document.getElementById('signupMsg');
+    if(!name || !email){ msg.textContent = 'Name and email are required.'; return; }
+    if(!/^\S+@\S+\.\S+$/.test(email)){ msg.textContent = 'Enter a valid email address.'; return; }
+    if(pass.length < 6){ msg.textContent = 'Password must be at least 6 characters.'; return; }
+    state.user = { name, email };
+    document.getElementById('suPass').value = '';
+    saveState();
+    showView('account');
+  }
+  function login(){
+    const email = document.getElementById('liEmail').value.trim();
+    const pass = document.getElementById('liPass').value;
+    const msg = document.getElementById('loginMsg');
+    if(!email || !pass){ msg.textContent = 'Enter your email and password.'; return; }
+    if(!/^\S+@\S+\.\S+$/.test(email)){ msg.textContent = 'Enter a valid email address.'; return; }
+    state.user = { name: state.user?.name || 'Registered builder', email };
+    document.getElementById('liPass').value = '';
+    saveState();
+    showView('account');
+  }
+  function signOut(){
+    state.user = null;
+    saveState();
+    showView('auth');
+  }
+  function renderAccount(){
+    document.getElementById('accountInfo').textContent = state.user
+      ? `Signed in as ${state.user.name} (${state.user.email})`
+      : 'Not signed in. Create an account or sign in to see order history.';
+    document.getElementById('signOutBtn').hidden = !state.user;
+    const list = document.getElementById('ordersList');
+    if(!state.orders.length){
+      list.innerHTML = `<div class="empty">No orders logged yet.</div>`;
+      return;
+    }
+    list.innerHTML = state.orders.map(o => {
+      const units = o.items.reduce((a,i) => a + i.qty, 0);
+      const bits = [
+        new Date(o.id).toLocaleDateString(),
+        `${units} item(s)`,
+        escapeHtml(o.status),
+        o.ship ? 'ships to ' + escapeHtml(o.ship.city) + ', ' + escapeHtml(o.ship.country) : '',
+        o.last4 ? 'card •••• ' + escapeHtml(o.last4) : ''
+      ].filter(Boolean).join(' · ');
+      return `
+      <div class="item">
+        <div>
+          <h4>Order #${o.id}</h4>
+          <small>${bits}</small>
+        </div>
+        <strong>${money(o.total)}</strong>
+      </div>`;
+    }).join('');
+  }
+
+  /* ---------- checkout ---------- */
+  function luhnOk(num){
+    let sum = 0, alt = false;
+    for(let i = num.length - 1; i >= 0; i--){
+      let d = +num[i];
+      if(alt){ d *= 2; if(d > 9) d -= 9; }
+      sum += d; alt = !alt;
+    }
+    return sum % 10 === 0;
+  }
+
+  function placeOrder(){
+    const msg = document.getElementById('checkoutMsg');
+    const v = id => document.getElementById(id).value.trim();
+    if(!state.cart.length){ msg.textContent = 'Your cart is empty.'; return; }
+
+    const required = [['shipName','name'],['shipLine1','address'],['shipCity','city'],['shipPostal','postal code'],['shipCountry','country']];
+    const missing = required.filter(([id]) => !v(id)).map(r => r[1]);
+    if(missing.length){ msg.textContent = 'Please fill in: ' + missing.join(', ') + '.'; return; }
+
+    const digits = v('cardNumber').replace(/[\s-]/g, '');
+    if(!/^\d{13,19}$/.test(digits) || !luhnOk(digits)){ msg.textContent = 'Card number looks invalid (demo card: 4242 4242 4242 4242).'; return; }
+
+    const m = v('cardExpiry').match(/^(\d{2})\s*\/\s*(\d{2})$/);
+    const now = new Date();
+    const mm = m ? +m[1] : 0, yy = m ? 2000 + +m[2] : 0;
+    if(!m || mm < 1 || mm > 12 || yy < now.getFullYear() || (yy === now.getFullYear() && mm < now.getMonth() + 1)){
+      msg.textContent = 'Expiry must be a future date, written MM/YY.'; return;
+    }
+    if(!/^\d{3,4}$/.test(v('cardCvc'))){ msg.textContent = 'CVC must be 3 or 4 digits.'; return; }
+
+    for(const item of state.cart){
+      const p = products.find(x => x.id === item.id);
+      if(!p || item.qty > p.stock){ msg.textContent = `Not enough stock for ${item.name}. Please adjust your cart.`; return; }
+    }
+
+    const t = orderTotals();
+    let stockMap = safeLoad('fk_stock', {});
+    state.cart.forEach(item => {                       // take the units out of stock
+      const p = products.find(x => x.id === item.id);
+      p.stock -= item.qty;
+      stockMap[p.id] = p.stock;
+    });
+    try{ localStorage.setItem('fk_stock', JSON.stringify(stockMap)); }catch(e){}
+
+    state.orders.unshift({
+      id: Date.now(),
+      items: state.cart.map(i => ({ ...i })),
+      total: t.total,
+      status: 'Paid',
+      ship: { name: v('shipName'), line1: v('shipLine1'), city: v('shipCity'), state: v('shipState'), postal: v('shipPostal'), country: v('shipCountry') },
+      last4: digits.slice(-4)                          // never store the full card number
+    });
+    state.cart = [];
+    saveState();
+    ['cardNumber','cardExpiry','cardCvc'].forEach(id => document.getElementById(id).value = '');
+    msg.textContent = 'Order placed. Details recorded in your account.';
+    setTimeout(() => showView('account'), 700);
+  }
+
+  /* ---------- admin ---------- */
+  function renderAdmin(){
+    document.getElementById('adminTable').innerHTML = products.map(p => `
+      <tr>
+        <td>${escapeHtml(p.name)}</td>
+        <td>${escapeHtml(p.category)}</td>
+        <td>${money(p.price)}</td>
+        <td>${p.stock}</td>
+        <td><button onclick="removeAdminProduct(${p.id})">Remove</button></td>
+      </tr>
+    `).join('');
+  }
+
+  function addAdminProduct(){
+    const name = document.getElementById('adName').value.trim();
+    const desc = document.getElementById('adDesc').value.trim();
+    const msg = document.getElementById('adminMsg');
+    const imgs = document.getElementById('adImages').value.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+    const priceN = Number(document.getElementById('adPrice').value);
+    const stockN = Number(document.getElementById('adStock').value || 0);
+    if(!name || !desc){ msg.textContent = 'Name and description are required.'; return; }
+    if(!(priceN > 0)){ msg.textContent = 'Enter a price greater than 0.'; return; }
+    if(!Number.isInteger(stockN) || stockN < 0){ msg.textContent = 'Stock must be a whole number, 0 or more.'; return; }
+    products.unshift({
+      id: Date.now(),
+      name,
+      brand: document.getElementById('adBrand').value.trim() || 'Unlisted',
+      category: document.getElementById('adCategory').value,
+      era: '—',
+      scale: document.getElementById('adScale').value.trim() || '—',
+      material: document.getElementById('adMaterial').value.trim() || '—',
+      difficulty: document.getElementById('adDifficulty').value,
+      dimensions: document.getElementById('adDimensions').value.trim() || '—',
+      parts: document.getElementById('adParts').value.trim() || '—',
+      sku: document.getElementById('adSku').value.trim() || ('FK-' + Math.floor(Math.random()*9000+1000)),
+      price: Number(document.getElementById('adPrice').value || 0),
+      stock: Number(document.getElementById('adStock').value || 0),
+      icon: 'sail',
+      image: imgs[0],
+      gallery: imgs.slice(1),
+      desc,
+      custom: true
+    });
+    saveCustom();
+    msg.textContent = `"${name}" added to the registry.`;
+    ['adName','adBrand','adScale','adMaterial','adDimensions','adParts','adSku','adPrice','adStock','adDesc','adImages'].forEach(id => document.getElementById(id).value = '');
+    renderAdmin();
+  }
+
+  function removeAdminProduct(id){
+    const i = products.findIndex(p => p.id === id);
+    if(i > -1) products.splice(i, 1);
+    saveCustom();
+    renderAdmin();
+  }
+
+  /* ---------- newsletter ---------- */
+  function handleSubscribe(e){
+    e.preventDefault();
+    const email = document.getElementById('subEmail').value.trim();
+    const msg = document.getElementById('subMsg');
+    if(!email){ msg.textContent = 'Enter an email to subscribe.'; return false; }
+    msg.textContent = `Logged — confirmation sent to ${email}.`;
+    document.getElementById('subscribe').reset();
+    return false;
+  }
+
+  /* ---------- init ---------- */
+  renderClassGrid();
+  if(window.__productsMissing) document.getElementById('dataWarn').hidden = false;
+  updateCartCount();
+  updateAuthNav();
+  renderProducts();
+  showView(location.hash.slice(1) || 'home');   // opens #shop / #cart when arriving from product.html
+  window.addEventListener('hashchange', () => showView(location.hash.slice(1)));
+  window.addEventListener('pageshow', () => {   // refresh cart when returning via the Back button
+    state.cart = safeLoad('fk_cart', []);
+    updateCartCount();
+    if(document.getElementById('cart').classList.contains('active')) renderCart();
+  });
+</script>
+</body>
+</html>
